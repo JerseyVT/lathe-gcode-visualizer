@@ -3,7 +3,7 @@
 (function(root) {
   'use strict';
   const EPS = 1e-8;
-  const MAX_FEED_PER_REV_INCH = 0.035;
+  const MAX_FEED_PER_REV_INCH = 0.05;
   const stripComments = line => line.replace(/\([^)]*\)/g, ' ').replace(/;.*$/g, ' ');
   function parseWords(line) {
     return [...stripComments(line).toUpperCase().matchAll(/([A-Z])\s*([+\-]?(?:\d+(?:\.\d*)?|\.\d+))/g)]
