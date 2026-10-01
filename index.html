@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Lathe G-code Visualizer</title>
+  <link rel="stylesheet" href="style.css?v=line-highlight-1" />
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Lathe G-code Visualizer</h1>
+      <p class="subtitle">Haas / Fanuc-style turning backplotter · X vertical · Z horizontal</p>
+    </div>
+    <div class="status-pill" id="parseStatus">Ready</div>
+  </header>
+
+  <main class="layout">
+    <section class="panel editor-panel">
+      <div class="panel-title-row">
+        <h2>G-code</h2>
+        <div class="toolbar">
+          <button id="loadSampleBtn">Load sample</button>
+          <button id="clearBtn">Clear</button>
+          <button id="downloadBtn">Save .nc</button>
+        </div>
+      </div>
+      <div class="editor-wrap">
+        <div id="lineNumbers" class="line-numbers"></div>
+        <div id="editorHighlightLayer" class="editor-highlight-layer" aria-hidden="true">
+          <div id="activeLineHighlight" class="active-line-highlight hidden"></div>
+        </div>
+        <textarea id="gcodeInput" wrap="off" spellcheck="false" aria-label="G-code editor"></textarea>
+      </div>
+      <div class="editor-footer">
+        <span id="lineCount">0 lines</span>
+        <span id="unsupportedSummary">No unsupported motion codes detected</span>
+      </div>
+    </section>
+
+    <section class="panel viewer-panel">
+      <div class="panel-title-row">
+        <h2>Toolpath</h2>
+        <div class="toolbar">
+          <button id="fitBtn">Fit</button>
+          <button id="zoomInBtn">+</button>
+          <button id="zoomOutBtn">−</button>
+          <button id="resetViewBtn">Reset view</button>
+        </div>
+      </div>
+
+      <div class="canvas-wrap" id="canvasWrap">
+        <svg id="plot" viewBox="0 0 1000 650" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <pattern id="gridSmall" width="25" height="25" patternUnits="userSpaceOnUse">
+              <path d="M 25 0 L 0 0 0 25" class="grid-minor" />
+            </pattern>
+            <pattern id="gridLarge" width="100" height="100" patternUnits="userSpaceOnUse">
+              <rect width="100" height="100" fill="url(#gridSmall)"/>
+              <path d="M 100 0 L 0 0 0 100" class="grid-major" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#gridLarge)" />
+          <g id="world">
+            <g id="stockLayer"></g>
+            <g id="axes"></g>
+            <g id="futurePath"></g>
+            <g id="completedPath"></g>
+            <g id="currentPath"></g>
+            <g id="toolLayer"></g>
+          </g>
+        </svg>
+      </div>
+
+      <div class="controls">
+        <div class="playback-row">
+          <button id="prevBtn">◀ Step</button>
+          <button id="playBtn">▶ Play</button>
+          <button id="nextBtn">Step ▶</button>
+          <button id="stopBtn">■ Stop</button>
+        </div>
+
+        <input id="scrubber" type="range" min="0" max="0" value="0" step="1" />
+
+        <div class="readout-grid">
+          <div><span class="label">Line</span><span id="lineReadout">0 / 0</span></div>
+          <div><span class="label">Mode</span><span id="motionReadout">—</span></div>
+          <div><span class="label">X</span><span id="xReadout">0.0000</span></div>
+          <div><span class="label">Z</span><span id="zReadout">0.0000</span></div>
+          <div><span class="label">Feed</span><span id="feedReadout">—</span></div>
+          <div><span class="label">Spindle</span><span id="spindleReadout">—</span></div>
+          <div><span class="label">Tool</span><span id="toolReadout">—</span></div>
+          <div><span class="label">Units</span><span id="unitsReadout">inch</span></div>
+          <div><label class="label" for="stockDiameter">Diameter (in)</label><input id="stockDiameter" type="number" min="0.001" max="10000" step="any" value="1.58" required /></div>
+          <div><label class="label" for="stockLength">Stock stick out (in)</label><input id="stockLength" type="number" min="0.001" max="10000" step="any" value="4" required /></div>
+        </div>
+
+        <div id="warningBox" class="warning-box hidden"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Educational toolpath preview only. Verify programs on the actual control / graphics mode before machining.
+  </footer>
+
+  <script src="parser.js?v=classroom-checks-1"></script>
+  <script src="app.js?v=line-highlight-1"></script>
+</body>
+</html>
