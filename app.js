@@ -16,7 +16,7 @@ T0101
 G50 S1800
 G97 S1200 M03
 G00 X1.600 Z0.100
-G01 Z0.000 F0.010
+G01 Z0.000 S1200 F0.010
 X1.300
 Z-0.800
 X1.000
@@ -47,6 +47,9 @@ function drawAxes() {
   for(const [text,x,y,cls] of [['+Z',90,-8,'axis-z-label'],['+X',8,-90,'axis-x-label']]) {
     const label=svgEl('text',{x,y,class:`axis-label ${cls}`});label.textContent=text;ref.appendChild(label);
   }
+  ref.appendChild(svgEl('path',{d:'M 54 44 L 0 0 M 3 8 L 0 0 L 8 3',class:'axis-origin-leader'}));
+  const originLabel=svgEl('text',{x:60,y:52,class:'axis-origin-label'});
+  originLabel.textContent='(X0, Z0)';ref.appendChild(originLabel);
   axesLayer.appendChild(ref);
 }
 function stockGeometry() { return {diameter:stock.diameter,length:stock.length,depth:.5,grip:Math.min(.2,stock.length),jaw:.18}; }

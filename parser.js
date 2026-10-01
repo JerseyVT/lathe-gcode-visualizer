@@ -3,6 +3,7 @@
 (function(root) {
   'use strict';
   const EPS = 1e-8;
+  const MAX_FEED_PER_REV_INCH = 0.035;
   const stripComments = line => line.replace(/\([^)]*\)/g, ' ').replace(/;.*$/g, ' ');
   function parseWords(line) {
     return [...stripComments(line).toUpperCase().matchAll(/([A-Z])\s*([+\-]?(?:\d+(?:\.\d*)?|\.\d+))/g)]
@@ -56,6 +57,7 @@
       spindleOn:false,spindleDirection:null,spindleLimit:null,tool:null,plane:'G18',workOffset:'G54'};
     const initialState={...s};
     let halted=false,ended=false,cutSeen=false;
+    let firstG01Seen=false,programNumberSeen=false,executableSeen=false;
     const seenG=new Set(), warned=new Set();
     const warn=(lineIndex,severity,message,key)=> {
       if(key && warned.has(key)) return;
@@ -74,12 +76,22 @@
       if(!clean || clean==='%') { states.push({...s,lineIndex:idx,raw});continue; }
       const words=parseWords(raw), codes=words.filter(w=>w.letter==='G').map(w=>w.value);
       const mCodes=words.filter(w=>w.letter==='M').map(w=>w.value);
+      let invalid=false;
+      const fail=message=>{warn(idx,'error',message);invalid=true;};
+      // Classroom header rules apply to the whole source, including after M30.
+      if(clean.includes('O')) {
+        const headers=words.filter(w=>w.letter==='O');
+        if(idx>=5 || executableSeen) fail('O is only allowed as the opening program number within the first five source lines. Use the number 0, not the letter O, in G/M codes and coordinates.');
+        else if(programNumberSeen) fail('Only one opening O program number is allowed.');
+        else if(headers.length!==1 || !Number.isInteger(headers[0].value) || headers[0].value<0 || words.some(w=>!['N','O'].includes(w.letter))) fail('Put the opening O program number on its own line, with an optional N line number or comment.');
+        else programNumberSeen=true;
+      }
+      if(words.some(w=>!['O','N'].includes(w.letter))) executableSeen=true;
       if(ended || halted) {
+        if(invalid) halted=true;
         if(ended && words.some(w=>!['N','O'].includes(w.letter))) warn(idx,'warning','Block after program end is not executed.','after-end');
         states.push({...s,lineIndex:idx,raw});continue;
       }
-      let invalid=false;
-      const fail=message=>{warn(idx,'error',message);invalid=true;};
       if((raw.match(/\(/g)||[]).length !== (raw.match(/\)/g)||[]).length) fail('Unclosed or unmatched comment.');
       const residue=clean.replace(/([A-Z])\s*([+\-]?(?:\d+(?:\.\d*)?|\.\d+))/g,'').replace(/[%/\s]/g,'');
       if(residue) fail(`Cannot interpret "${residue}". Check missing values, decimal points, or unsupported expressions.`);
@@ -114,6 +126,14 @@
       if(mCodes.length>1) fail('Haas permits one M code per block.');
       if('F' in map && map.F<=0) fail('Feed F must be greater than zero.');
       if('S' in map && map.S<=0) fail('Spindle speed/limit S must be greater than zero.');
+      if(codes.includes(1) && !firstG01Seen && (!('S' in map) || !('F' in map) || codes.includes(50)))
+        fail('Classroom rule: the first G01 line must include spindle speed S and feedrate F on that same line.');
+      const nextUnits=codes.includes(21)?'mm':codes.includes(20)?'inch':s.units;
+      const nextFeedMode=codes.includes(98)?'G98':codes.includes(99)?'G99':s.feedMode;
+      const nextFeed='F' in map?map.F:s.feed;
+      const maxFeed=MAX_FEED_PER_REV_INCH*(nextUnits==='mm'?25.4:1);
+      if(nextFeedMode==='G99' && nextFeed!==null && nextFeed>maxFeed+1e-10)
+        fail(`Classroom feed limit: F${nextFeed} exceeds F${Number(maxFeed.toFixed(3))} ${nextUnits==='mm'?'mm':'in'}/rev. Preview stops before this block.`);
       if('T' in map && (!Number.isInteger(map.T)||map.T<0||map.T>9999)) fail('Tool T must be an integer from 0 to 9999.');
       if(codes.includes(50) && !('S' in map)) fail('G50 spindle limit needs an S value.');
       const hasAxis=['X','Z','U','W'].some(k=>k in map);
@@ -128,6 +148,7 @@
       if('R' in map && !hasAxis && !('I' in map||'K' in map)) fail('An R arc needs an endpoint; use I/K for a full circle.');
       if(codes.includes(28) && motionCodes.length) fail('Combine G28 with axis addresses only; explicit motion in this block is not supported.');
       if(invalid) { halted=true;states.push({...s,lineIndex:idx,raw});continue; }
+      if(codes.includes(1)) firstG01Seen=true;
       if(codes.includes(20)) s.units='inch';
       if(codes.includes(21)) s.units='mm';
       const unit=s.units==='mm'?1/25.4:1;

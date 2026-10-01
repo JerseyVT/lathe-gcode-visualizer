@@ -102,6 +102,8 @@ button:hover { background: #303d49; }
 .axis-arrow { fill: none; }
 .axis-z-label { fill: #6bb6ff; }
 .axis-x-label { fill: #ff6b6b; }
+.axis-origin-leader { fill: none; stroke: #ffffff; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.axis-origin-label { fill: #ffffff; font: 12px ui-monospace, monospace; }
 
 #plot { touch-action: none; }
 .warning-box { max-height: 140px; overflow-y: auto; }
